@@ -1,4 +1,4 @@
-/**
+ï»¿/**
  * Cache system for Susie Plug-in by shimitei (modified by gocha)
  * <http://www.asahi-net.or.jp/~kh4s-smz/spi/make_spi.html>
  */
@@ -35,29 +35,29 @@ void InfoCache::Clear(void)
   cs.Leave();
 }
 
-//ƒLƒƒƒbƒVƒ…’Ç‰Á
-//filepath:ƒtƒ@ƒCƒ‹ƒpƒX
-//ph:ƒnƒ“ƒhƒ‹‚Ö‚Ìƒ|ƒCƒ“ƒ^
-//INFOCACHE_MAX’´‚¦‚½‚çŒÃ‚¢‚Ì‚ÍÁ‚·
-void InfoCache::Add(const char *filepath, HLOCAL *ph)
+//ã‚­ãƒ£ãƒƒã‚·ãƒ¥è¿½åŠ 
+//filepath:ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
+//ph:ãƒãƒ³ãƒ‰ãƒ«ã¸ã®ãƒã‚¤ãƒ³ã‚¿
+//INFOCACHE_MAXè¶…ãˆãŸã‚‰å¤ã„ã®ã¯æ¶ˆã™
+void InfoCache::Add(const wchar_t *filepath, HLOCAL *ph)
 {
   cs.Enter();
   if (arcinfo[nowno].hinfo) LocalFree(arcinfo[nowno].hinfo);
   arcinfo[nowno].hinfo = *ph;
-  strcpy_s(arcinfo[nowno].path, filepath);
+  wcscpy_s(arcinfo[nowno].path, filepath);
   nowno = (nowno+1)%INFOCACHE_MAX;
   cs.Leave();
 }
 
-//ƒLƒƒƒbƒVƒ…‚É‚ ‚ê‚Îƒnƒ“ƒhƒ‹‚ğ•Ô‚·
-bool InfoCache::GetCache(const char *filepath, HLOCAL *ph)
+//ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ã‚ã‚Œã°ãƒãƒ³ãƒ‰ãƒ«ã‚’è¿”ã™
+bool InfoCache::GetCache(const wchar_t *filepath, HLOCAL *ph)
 {
   bool ret = false;
   int no = nowno-1;
   if (no < 0) no = INFOCACHE_MAX -1;
   for (int i=0; i<INFOCACHE_MAX; i++) {
     if (arcinfo[no].hinfo == NULL) break;
-    if (_stricmp(arcinfo[no].path, filepath) == 0) {
+    if (_wcsicmp(arcinfo[no].path, filepath) == 0) {
       *ph = arcinfo[no].hinfo;
       ret = true;
       break;
@@ -68,16 +68,16 @@ bool InfoCache::GetCache(const char *filepath, HLOCAL *ph)
   return ret;
 }
 
-//ƒLƒƒƒbƒVƒ…‚É‚ ‚ê‚ÎƒRƒs[
-//ph:ƒA[ƒJƒCƒuî•ñ‚ğó‚¯æ‚éƒnƒ“ƒhƒ‹‚Ö‚Ìƒ|ƒCƒ“ƒ^
-//pinfo:ƒA[ƒJƒCƒu‚Ìƒtƒ@ƒCƒ‹î•ñ‚ğó‚¯æ‚éƒ|ƒCƒ“ƒ^
-//      ‚ ‚ç‚©‚¶‚ß pinfo ‚É filename ‚© position ‚ğƒZƒbƒg‚µ‚Ä‚¨‚­B
-//      ƒLƒƒƒbƒVƒ…‚ª‚ ‚ê‚Î filename(position) ‚Ìˆê’v‚·‚éî•ñ‚ğ•Ô‚·B
-//ƒLƒƒƒbƒVƒ…‚É‚È‚¯‚ê‚ÎASPI_NO_FUNCTION ‚ª•Ô‚éB
-//ƒLƒƒƒbƒVƒ…‚É‚ ‚ê‚Î SPI_ALL_RIGHT ‚ª•Ô‚éB
-//ƒA[ƒJƒCƒuî•ñ‚ÍƒLƒƒƒbƒVƒ…‚É‚ ‚é‚ªAfilename(position) ‚ªˆê’v‚µ‚È‚¢ê‡‚Í
-//SPI_NOT_SUPPORT ‚ª•Ô‚éBƒGƒ‰[‚Ìê‡‚ÍƒGƒ‰[ƒR[ƒh‚ª•Ô‚éB
-int InfoCache::Dupli(const char *filepath, HLOCAL *ph, fileInfo *pinfo)
+//ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ã‚ã‚Œã°ã‚³ãƒ”ãƒ¼
+//ph:ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–æƒ…å ±ã‚’å—ã‘å–ã‚‹ãƒãƒ³ãƒ‰ãƒ«ã¸ã®ãƒã‚¤ãƒ³ã‚¿
+//pinfo:ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–ã®ãƒ•ã‚¡ã‚¤ãƒ«æƒ…å ±ã‚’å—ã‘å–ã‚‹ãƒã‚¤ãƒ³ã‚¿
+//      ã‚ã‚‰ã‹ã˜ã‚ pinfo ã« filename ã‹ position ã‚’ã‚»ãƒƒãƒˆã—ã¦ãŠãã€‚
+//      ã‚­ãƒ£ãƒƒã‚·ãƒ¥ãŒã‚ã‚Œã° filename(position) ã®ä¸€è‡´ã™ã‚‹æƒ…å ±ã‚’è¿”ã™ã€‚
+//ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ãªã‘ã‚Œã°ã€SPI_NO_FUNCTION ãŒè¿”ã‚‹ã€‚
+//ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ã‚ã‚Œã° SPI_ALL_RIGHT ãŒè¿”ã‚‹ã€‚
+//ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–æƒ…å ±ã¯ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ã‚ã‚‹ãŒã€filename(position) ãŒä¸€è‡´ã—ãªã„å ´åˆã¯
+//SPI_NOT_SUPPORT ãŒè¿”ã‚‹ã€‚ã‚¨ãƒ©ãƒ¼ã®å ´åˆã¯ã‚¨ãƒ©ãƒ¼ã‚³ãƒ¼ãƒ‰ãŒè¿”ã‚‹ã€‚
+int InfoCache::Dupli(const wchar_t *filepath, HLOCAL *ph, fileInfoW *pinfo)
 {
   cs.Enter();
   HLOCAL hinfo;
@@ -86,8 +86,8 @@ int InfoCache::Dupli(const char *filepath, HLOCAL *ph, fileInfo *pinfo)
 if (ret) {
   ret = SPI_ALL_RIGHT;
   if (ph != NULL) {
-    UINT size = (UINT) LocalSize(hinfo);
-    /* o—Í—p‚Ìƒƒ‚ƒŠ‚ÌŠ„‚è“–‚Ä */
+    auto size = LocalSize(hinfo);
+    /* å‡ºåŠ›ç”¨ã®ãƒ¡ãƒ¢ãƒªã®å‰²ã‚Šå½“ã¦ */
     *ph = LocalAlloc(LMEM_FIXED, size);
     if (*ph == NULL) {
       ret = SPI_NO_MEMORY;
@@ -95,14 +95,14 @@ if (ret) {
       memcpy(*ph, (void*)hinfo, size);
     }
   } else {
-    fileInfo *ptmp = (fileInfo *)hinfo;
-    if (pinfo->filename[0] != '\0') {
+    fileInfoW *ptmp = (fileInfoW *)hinfo;
+    if (pinfo->filename[0] != L'\0') {
       for (;;) {
         if (ptmp->method[0] == '\0') {
           ret = SPI_NOT_SUPPORT;
           break;
         }
-        if (_stricmp(ptmp->filename, pinfo->filename) == 0) break;
+        if (_wcsicmp(ptmp->filename, pinfo->filename) == 0) break;
         ptmp++;
       }
     } else {

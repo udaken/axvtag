@@ -1,4 +1,4 @@
-/**
+ï»¿/**
  * SUSIE32 '00AM' Plug-in Sample by shimitei (modified by gocha)
  * <http://www.asahi-net.or.jp/~kh4s-smz/spi/make_spi.html>
  */
@@ -11,11 +11,11 @@
 
  //---------------------------------------------------------------------------//
  //
- // ŠÔŒ^
+ // æ™‚é–“å‹
  //
  //---------------------------------------------------------------------------//
 
- // Susie “Æ©‚Ì time_t Œ^
+ // Susie ç‹¬è‡ªã® time_t å‹
 #if INTPTR_MAX == INT64_MAX
 typedef __time64_t susie_time_t;
 #elif INTPTR_MAX == INT32_MAX
@@ -25,72 +25,77 @@ typedef __time32_t susie_time_t;
 #endif
 
 /*-------------------------------------------------------------------------*/
-// ƒtƒ@ƒCƒ‹î•ñ\‘¢‘Ì
+// ãƒ•ã‚¡ã‚¤ãƒ«æƒ…å ±æ§‹é€ ä½“
 /*-------------------------------------------------------------------------*/
 #pragma pack(push)
-#pragma pack(1) //\‘¢‘Ì‚Ìƒƒ“ƒo‹«ŠE‚ğ1ƒoƒCƒg‚É‚·‚é
+#pragma pack(1) //æ§‹é€ ä½“ã®ãƒ¡ãƒ³ãƒå¢ƒç•Œã‚’1ãƒã‚¤ãƒˆã«ã™ã‚‹
 typedef struct fileInfo
 {
-	uint8_t      method[8];              // ˆ³k–@‚Ìí—Ş
-	size_t       position;               // ƒtƒ@ƒCƒ‹ã‚Å‚ÌˆÊ’u
-	size_t       compsize;               // ˆ³k‚³‚ê‚½ƒTƒCƒY
-	size_t       filesize;               // Œ³‚Ìƒtƒ@ƒCƒ‹ƒTƒCƒY
-	susie_time_t timestamp;              // ƒtƒ@ƒCƒ‹‚ÌXV“ú
-	char         path[200];     // ‘Š‘ÎƒpƒX
-	char         filename[200]; // ƒtƒ@ƒCƒ‹ƒl[ƒ€
+	uint8_t      method[8];              // åœ§ç¸®æ³•ã®ç¨®é¡
+	size_t       position;               // ãƒ•ã‚¡ã‚¤ãƒ«ä¸Šã§ã®ä½ç½®
+	size_t       compsize;               // åœ§ç¸®ã•ã‚ŒãŸã‚µã‚¤ã‚º
+	size_t       filesize;               // å…ƒã®ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚º
+	susie_time_t timestamp;              // ãƒ•ã‚¡ã‚¤ãƒ«ã®æ›´æ–°æ—¥æ™‚
+	char         path[200];     // ç›¸å¯¾ãƒ‘ã‚¹
+	char         filename[200]; // ãƒ•ã‚¡ã‚¤ãƒ«ãƒãƒ¼ãƒ 
 	uint32_t     crc;                    // CRC32
 #if INTPTR_MAX == INT64_MAX
-	uint8_t      dummy[4];               // ƒAƒ‰ƒCƒ“ƒƒ“ƒg
+	uint8_t      dummy[4];               // ã‚¢ãƒ©ã‚¤ãƒ³ãƒ¡ãƒ³ãƒˆ
 #endif
 } fileInfo;
 
 typedef struct fileInfoW
 {
-	uint8_t      method[8];              // ˆ³k–@‚Ìí—Ş
-	size_t       position;               // ƒtƒ@ƒCƒ‹ã‚Å‚ÌˆÊ’u
-	size_t       compsize;               // ˆ³k‚³‚ê‚½ƒTƒCƒY
-	size_t       filesize;               // Œ³‚Ìƒtƒ@ƒCƒ‹ƒTƒCƒY
-	susie_time_t timestamp;              // ƒtƒ@ƒCƒ‹‚ÌXV“ú
-	wchar_t      path[200];     // ‘Š‘ÎƒpƒX
-	wchar_t      filename[200]; // ƒtƒ@ƒCƒ‹ƒl[ƒ€
+	uint8_t      method[8];              // åœ§ç¸®æ³•ã®ç¨®é¡
+	size_t       position;               // ãƒ•ã‚¡ã‚¤ãƒ«ä¸Šã§ã®ä½ç½®
+	size_t       compsize;               // åœ§ç¸®ã•ã‚ŒãŸã‚µã‚¤ã‚º
+	size_t       filesize;               // å…ƒã®ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚º
+	susie_time_t timestamp;              // ãƒ•ã‚¡ã‚¤ãƒ«ã®æ›´æ–°æ—¥æ™‚
+	wchar_t      path[200];     // ç›¸å¯¾ãƒ‘ã‚¹
+	wchar_t      filename[200]; // ãƒ•ã‚¡ã‚¤ãƒ«ãƒãƒ¼ãƒ 
 	uint32_t     crc;                    // CRC32
 #if INTPTR_MAX == INT64_MAX
-	uint8_t      dummy[4];               // ƒAƒ‰ƒCƒ“ƒƒ“ƒg
+	uint8_t      dummy[4];               // ã‚¢ãƒ©ã‚¤ãƒ³ãƒ¡ãƒ³ãƒˆ
 #endif
 } fileInfoW;
 
 #pragma pack(pop)
 
 /*-------------------------------------------------------------------------*/
-// ƒGƒ‰[ƒR[ƒh
+// ã‚¨ãƒ©ãƒ¼ã‚³ãƒ¼ãƒ‰
 /*-------------------------------------------------------------------------*/
-#define SPI_NO_FUNCTION         -1  /* ‚»‚Ì‹@”\‚ÍƒCƒ“ƒvƒŠƒƒ“ƒg‚³‚ê‚Ä‚¢‚È‚¢ */
-#define SPI_ALL_RIGHT           0   /* ³íI—¹ */
-#define SPI_ABORT               1   /* ƒR[ƒ‹ƒoƒbƒNŠÖ”‚ª”ñ0‚ğ•Ô‚µ‚½‚Ì‚Å“WŠJ‚ğ’†~‚µ‚½ */
-#define SPI_NOT_SUPPORT         2   /* –¢’m‚ÌƒtƒH[ƒ}ƒbƒg */
-#define SPI_OUT_OF_ORDER        3   /* ƒf[ƒ^‚ª‰ó‚ê‚Ä‚¢‚é */
-#define SPI_NO_MEMORY           4   /* ƒƒ‚ƒŠ[‚ªŠm•Ûo—ˆ‚È‚¢ */
-#define SPI_MEMORY_ERROR        5   /* ƒƒ‚ƒŠ[ƒGƒ‰[ */
-#define SPI_FILE_READ_ERROR     6   /* ƒtƒ@ƒCƒ‹ƒŠ[ƒhƒGƒ‰[ */
-#define SPI_WINDOW_ERROR        7   /* ‘‹‚ªŠJ‚¯‚È‚¢ (”ñŒöŠJ‚ÌƒGƒ‰[ƒR[ƒh) */
-#define SPI_OTHER_ERROR         8   /* “à•”ƒGƒ‰[ */
-#define SPI_FILE_WRITE_ERROR    9   /* ‘‚«‚İƒGƒ‰[ (”ñŒöŠJ‚ÌƒGƒ‰[ƒR[ƒh) */
-#define SPI_END_OF_FILE         10  /* ƒtƒ@ƒCƒ‹I’[ (”ñŒöŠJ‚ÌƒGƒ‰[ƒR[ƒh) */
+#define SPI_NO_FUNCTION         -1  /* ãã®æ©Ÿèƒ½ã¯ã‚¤ãƒ³ãƒ—ãƒªãƒ¡ãƒ³ãƒˆã•ã‚Œã¦ã„ãªã„ */
+#define SPI_ALL_RIGHT           0   /* æ­£å¸¸çµ‚äº† */
+#define SPI_ABORT               1   /* ã‚³ãƒ¼ãƒ«ãƒãƒƒã‚¯é–¢æ•°ãŒé0ã‚’è¿”ã—ãŸã®ã§å±•é–‹ã‚’ä¸­æ­¢ã—ãŸ */
+#define SPI_NOT_SUPPORT         2   /* æœªçŸ¥ã®ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆ */
+#define SPI_OUT_OF_ORDER        3   /* ãƒ‡ãƒ¼ã‚¿ãŒå£Šã‚Œã¦ã„ã‚‹ */
+#define SPI_NO_MEMORY           4   /* ãƒ¡ãƒ¢ãƒªãƒ¼ãŒç¢ºä¿å‡ºæ¥ãªã„ */
+#define SPI_MEMORY_ERROR        5   /* ãƒ¡ãƒ¢ãƒªãƒ¼ã‚¨ãƒ©ãƒ¼ */
+#define SPI_FILE_READ_ERROR     6   /* ãƒ•ã‚¡ã‚¤ãƒ«ãƒªãƒ¼ãƒ‰ã‚¨ãƒ©ãƒ¼ */
+#define SPI_WINDOW_ERROR        7   /* çª“ãŒé–‹ã‘ãªã„ (éå…¬é–‹ã®ã‚¨ãƒ©ãƒ¼ã‚³ãƒ¼ãƒ‰) */
+#define SPI_OTHER_ERROR         8   /* å†…éƒ¨ã‚¨ãƒ©ãƒ¼ */
+#define SPI_FILE_WRITE_ERROR    9   /* æ›¸ãè¾¼ã¿ã‚¨ãƒ©ãƒ¼ (éå…¬é–‹ã®ã‚¨ãƒ©ãƒ¼ã‚³ãƒ¼ãƒ‰) */
+#define SPI_END_OF_FILE         10  /* ãƒ•ã‚¡ã‚¤ãƒ«çµ‚ç«¯ (éå…¬é–‹ã®ã‚¨ãƒ©ãƒ¼ã‚³ãƒ¼ãƒ‰) */
 
 /*-------------------------------------------------------------------------*/
-// '00AM'ŠÖ”‚Ìƒvƒƒgƒ^ƒCƒvéŒ¾
+// '00AM'é–¢æ•°ã®ãƒ—ãƒ­ãƒˆã‚¿ã‚¤ãƒ—å®£è¨€
 /*-------------------------------------------------------------------------*/
 //int PASCAL ProgressCallback(int nNum, int nDenom, long lData);
 typedef int (CALLBACK *SPI_PROGRESS)(int, int, LONG_PTR);
 extern "C"
 {
-	int WINAPI GetPluginInfo(int infono, LPSTR buf, int buflen) noexcept;
-	int WINAPI IsSupported(LPSTR filename, void* dw) noexcept;
-	int WINAPI GetArchiveInfo(LPSTR buf, size_t len, unsigned int flag, HLOCAL *lphInf) noexcept;
-	int WINAPI GetFileInfo(LPSTR buf, size_t len, LPSTR filename, unsigned int flag, fileInfo *lpInfo) noexcept;
-	int WINAPI GetFile(LPSTR src, size_t len, LPSTR dest, unsigned int flag, SPI_PROGRESS prgressCallback, LONG_PTR lData) noexcept;
+	int __stdcall GetPluginInfo(int infono, LPSTR buf, int buflen) noexcept;
+	int __stdcall GetPluginInfoW(int infono, LPWSTR buf, int buflen) noexcept;
+	int __stdcall IsSupported(LPSTR filename, void* dw) noexcept;
+	int __stdcall IsSupportedW(LPCWSTR filename, void *dw) noexcept;
+	int __stdcall GetArchiveInfo(LPSTR buf, size_t len, unsigned int flag, HLOCAL *lphInf) noexcept;
+	int __stdcall GetArchiveInfoW(LPCWSTR buf, size_t len, unsigned int flag, HLOCAL *lphInf) noexcept;
+	int __stdcall GetFileInfo(LPSTR buf, size_t len, LPSTR filename, unsigned int flag, fileInfo *lpInfo) noexcept;
+	int __stdcall GetFileInfoW(LPCWSTR buf, size_t len, LPCWSTR filename, unsigned int flag, fileInfoW *lpInfo) noexcept;
+	int __stdcall GetFile(LPSTR src, size_t len, LPSTR dest, unsigned int flag, SPI_PROGRESS prgressCallback, LONG_PTR lData) noexcept;
+	int __stdcall GetFileW(LPCWSTR src, size_t len, LPCWSTR dest, unsigned int flag, SPI_PROGRESS prgressCallback, LONG_PTR lData) noexcept;
 
-	int WINAPI ConfigurationDlg(HWND parent, int fnc) noexcept;
+	int __stdcall ConfigurationDlg(HWND parent, int fnc) noexcept;
 }
 
 #endif

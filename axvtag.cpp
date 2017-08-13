@@ -5,6 +5,7 @@
 #include <comdef.h>
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
+#include <commctrl.h>
 
 #include <memory>
 #include <vector>
@@ -15,72 +16,41 @@
 
 #include "spi00am.h"
 #include "axvtag.h"
-#include "commctrl.h"
+#include "utility.h"
 
 #include "resource.h"
-
 
 #define TrackBar_GetPos(hwndCtl)     ((int)(DWORD)SNDMSG((hwndCtl), TBM_GETPOS, (WPARAM)0, (LPARAM)0))
 #define TrackBar_SetPos(hwndCtl, repaint,newPos)     ((int)(DWORD)SNDMSG((hwndCtl), TBM_SETPOS, (WPARAM)(BOOL)(repaint), (LPARAM)(newPos)))
 #define TrackBar_SetRange(hwndCtl,repaint,minValue,maxValue)     ((int)(DWORD)SNDMSG((hwndCtl), TBM_SETRANGE, (WPARAM)(BOOL)(repaint),  MAKELPARAM((minValue), (maxValue))))
 
-inline std::string w2a(LPCWSTR str, CHAR DefaultChar = '?')
-{
-	DWORD const dwFlags = WC_COMPOSITECHECK | WC_NO_BEST_FIT_CHARS;
-	int capacity = ::WideCharToMultiByte(CP_THREAD_ACP, dwFlags, str, -1, nullptr, 0, &DefaultChar, nullptr);
-	if (capacity == 0)
-		throw std::exception();
-
-	std::string ret(static_cast<size_t>(capacity + 1), '\0');
-	::WideCharToMultiByte(CP_THREAD_ACP, dwFlags, str, -1, ret.data(), capacity, &DefaultChar, nullptr);
-
-	return std::move(ret);
-}
-
-inline std::wstring a2w(LPCSTR str)
-{
-	DWORD const dwFlags = MB_ERR_INVALID_CHARS;
-	int capacity = ::MultiByteToWideChar(CP_THREAD_ACP, dwFlags, str, -1, nullptr, 0);
-	if (capacity == 0)
-		throw std::exception();
-
-	std::wstring ret(static_cast<size_t>(capacity + 1), L'\0');
-	::MultiByteToWideChar(CP_THREAD_ACP, dwFlags, str, -1, ret.data(), capacity);
-
-	return std::move(ret);
-}
-
 struct Configuration
 {
 	std::wstring ExcludePattern = L"";
 	UINT LowerBound = 2;
-	bool enableParnthesis = true;
-	bool enableFullwidthParnthesis = true;
-	bool enableSquareBracket = true;
-	bool enableFullwidthSquareBracket = true;
-	bool enableBlackLenticularBracket = true;
-	bool enableWhiteLenticularBracket = true;
-	bool enableCornerBracket = true;
-	bool enableWhiteCornerBracket = true;
-	bool enableDoubleAngleBracket = true;
+
+	bool EnableSpace = false;
+	bool EnableParnthesis = true;
+	bool EnableFullwidthParnthesis = true;
+	bool EnableSquareBracket = true;
+	bool EnableFullwidthSquareBracket = true;
+	bool EnableBlackLenticularBracket = true;
+	bool EnableWhiteLenticularBracket = true;
+	bool EnableCornerBracket = true;
+	bool EnableWhiteCornerBracket = true;
+	bool EnableDoubleAngleBracket = true;
 
 	inline void Save() const
 	{
 		auto const iniFile = GetGlobalIniFilePath();
 
-		Configuration const defaultVal;
-
-		if (defaultVal.ExcludePattern != ExcludePattern)
-			::WritePrivateProfileString(keyName, L"ExcludePattern", ExcludePattern.c_str(), iniFile.c_str());
+		::WritePrivateProfileString(keyName, L"ExcludePattern", ExcludePattern.c_str(), iniFile.c_str());
 		for (auto a : GetBoolMembers())
 		{
-			if (defaultVal.*a.second != this->*a.second)
-				::WritePrivateProfileString(keyName, a.first, this->*a.second ? L"1" : L"0", iniFile.c_str());
+			::WritePrivateProfileString(keyName, a.first, this->*a.second ? L"1" : L"0", iniFile.c_str());
 		}
 
-		if (defaultVal.LowerBound != LowerBound)
-			::WritePrivateProfileString(keyName, L"LowerBound", std::to_wstring(LowerBound).c_str(), iniFile.c_str());
-
+		::WritePrivateProfileString(keyName, L"LowerBound", std::to_wstring(LowerBound).c_str(), iniFile.c_str());
 	}
 
 	static std::wstring GetGlobalIniFilePath()
@@ -91,6 +61,10 @@ struct Configuration
 		return iniFile;
 	}
 
+	inline void LoadDefault()
+	{
+		Load(GetGlobalIniFilePath().c_str());
+	}
 	inline void Load(LPCWSTR iniFile)
 	{
 		{
@@ -116,23 +90,25 @@ struct Configuration
 	{
 		std::map<const wchar_t *, const wchar_t *> map;
 
-		if (enableParnthesis)
+		if (EnableSpace)
+			map.insert(std::make_pair(L" ", L" "));
+		if (EnableParnthesis)
 			map.insert(std::make_pair(L"(", L")"));
-		if (enableFullwidthParnthesis)
+		if (EnableFullwidthParnthesis)
 			map.insert(std::make_pair(L"（", L"）"));
-		if (enableSquareBracket)
+		if (EnableSquareBracket)
 			map.insert(std::make_pair(L"[", L"]"));
-		if (enableFullwidthSquareBracket)
+		if (EnableFullwidthSquareBracket)
 			map.insert(std::make_pair(L"［", L"］"));
-		if (enableBlackLenticularBracket)
+		if (EnableBlackLenticularBracket)
 			map.insert(std::make_pair(L"【", L"】"));
-		if (enableWhiteLenticularBracket)
-			map.insert(std::make_pair(L"『", L"』"));
-		if (enableCornerBracket)
+		if (EnableWhiteLenticularBracket)
+			map.insert(std::make_pair(L"〖", L"〗"));
+		if (EnableCornerBracket)
 			map.insert(std::make_pair(L"「", L"」"));
-		if (enableWhiteCornerBracket)
+		if (EnableWhiteCornerBracket)
 			map.insert(std::make_pair(L"『", L"』"));
-		if (enableDoubleAngleBracket)
+		if (EnableDoubleAngleBracket)
 			map.insert(std::make_pair(L"《", L"》"));
 
 		return std::move(map);
@@ -142,15 +118,16 @@ struct Configuration
 	{
 		const static std::pair<LPCWSTR, bool Configuration::*> boolMembers[] =
 		{
-			std::make_pair(L"enableParnthesis", &Configuration::enableParnthesis),
-			std::make_pair(L"enableFullwidthParnthesis", &Configuration::enableFullwidthParnthesis),
-			std::make_pair(L"enableSquareBracket", &Configuration::enableSquareBracket),
-			std::make_pair(L"enableFullwidthSquareBracket", &Configuration::enableFullwidthSquareBracket),
-			std::make_pair(L"enableBlackLenticularBracket", &Configuration::enableBlackLenticularBracket),
-			std::make_pair(L"enableWhiteLenticularBracket", &Configuration::enableWhiteLenticularBracket),
-			std::make_pair(L"enableCornerBracket", &Configuration::enableCornerBracket),
-			std::make_pair(L"enableWhiteCornerBracket", &Configuration::enableWhiteCornerBracket),
-			std::make_pair(L"enableDoubleAngleBracket", &Configuration::enableDoubleAngleBracket),
+			std::make_pair(L"EnableSpace", &Configuration::EnableSpace),
+			std::make_pair(L"EnableParnthesis", &Configuration::EnableParnthesis),
+			std::make_pair(L"EnableFullwidthParnthesis", &Configuration::EnableFullwidthParnthesis),
+			std::make_pair(L"EnableSquareBracket", &Configuration::EnableSquareBracket),
+			std::make_pair(L"EnableFullwidthSquareBracket", &Configuration::EnableFullwidthSquareBracket),
+			std::make_pair(L"EnableBlackLenticularBracket", &Configuration::EnableBlackLenticularBracket),
+			std::make_pair(L"EnableWhiteLenticularBracket", &Configuration::EnableWhiteLenticularBracket),
+			std::make_pair(L"EnableCornerBracket", &Configuration::EnableCornerBracket),
+			std::make_pair(L"EnableWhiteCornerBracket", &Configuration::EnableWhiteCornerBracket),
+			std::make_pair(L"EnableDoubleAngleBracket", &Configuration::EnableDoubleAngleBracket),
 		};
 
 		return std::move(std::map<LPCWSTR, bool(Configuration::*)>(boolMembers, boolMembers + _countof(boolMembers)));
@@ -187,7 +164,7 @@ BOOL APIENTRY SpiEntryPoint(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lp
  * (判断に使用するサイズはヘッダファイルで定義)
  * ファイル名も判断材料として渡されているみたい
  */
-BOOL IsSupportedEx(const char *filename, const BYTE *data)
+BOOL IsSupportedEx(const wchar_t *filename, const BYTE *data)
 {
 	const static BYTE sig[] = { '[', 'A','X','V','T','A','G', ']' };
 
@@ -213,12 +190,11 @@ LPCWSTR findTag(const Configuration &config, size_t index, LPCWSTR filename, std
 		auto openPos = wcsstr(filename, tagSep.first);
 		if (openPos)
 		{
-			openPos += lstrlenW(tagSep.first);
-			auto closePos = wcsstr(openPos, tagSep.second);
+			auto closePos = wcsstr(openPos + lstrlenW(tagSep.first), tagSep.second);
 			if (closePos && openPos < firstPos) // 先頭のタグを見つける
 			{
 				firstPos = openPos;
-				endPos = closePos;
+				endPos = closePos + wcslen(tagSep.second);
 			}
 		}
 	}
@@ -231,7 +207,7 @@ LPCWSTR findTag(const Configuration &config, size_t index, LPCWSTR filename, std
 	return endPos;
 }
 
-bool enumFiles(Configuration &config, LPCWSTR filename, std::vector<WIN32_FIND_DATA> &files)
+bool enumFiles(const Configuration &config, LPCWSTR filename, std::vector<WIN32_FIND_DATA> &files)
 {
 	WCHAR dir[MAX_PATH];
 	wcscpy_s(dir, filename);
@@ -270,20 +246,22 @@ bool enumFiles(Configuration &config, LPCWSTR filename, std::vector<WIN32_FIND_D
 	return true;
 }
 
-inline susie_time_t FileTimeToUnixTime(const FILETIME& ft) {
+inline susie_time_t FileTimeToUnixTime(const FILETIME& ft)
+{
 	LARGE_INTEGER li;
 	li.HighPart = ft.dwHighDateTime;
 	li.LowPart = ft.dwLowDateTime;
 	return static_cast<susie_time_t>((li.QuadPart - 116444736000000000) / 10000000);
 }
 
-int GetArchiveInfoEx(LPCSTR filename, size_t len, HLOCAL *lphInf)
+int GetArchiveInfoEx(LPCWSTR filename, size_t len, HLOCAL *lphInf)
 {
 	Configuration config;
-	config.Load(a2w(filename).c_str());
+	config.LoadDefault();
+	config.Load(filename);
 
 	std::vector<WIN32_FIND_DATA> files;
-	if (!enumFiles(config, a2w(filename).c_str(), files))
+	if (!enumFiles(config, filename, files))
 		return SPI_FILE_READ_ERROR;
 
 	std::multimap<const std::wstring, size_t> tags;
@@ -296,7 +274,7 @@ int GetArchiveInfoEx(LPCSTR filename, size_t len, HLOCAL *lphInf)
 		} while (startPos);
 	}
 
-	std::vector<fileInfo> ret;
+	std::vector<fileInfoW> ret;
 	for (auto pair : tags)
 	{
 		if (tags.count(pair.first) < config.LowerBound)
@@ -304,23 +282,24 @@ int GetArchiveInfoEx(LPCSTR filename, size_t len, HLOCAL *lphInf)
 			continue;
 		}
 
-		fileInfo fi = { {'V','T', 'A', 'G'} };
+		fileInfoW fi = { {'V','T', 'A', 'G'} };
 		fi.position = pair.second;
-		auto findData = files[pair.second];
-		fi.compsize = fi.filesize = findData.nFileSizeLow;
+		const auto findData = files.at(pair.second);
+		ULARGE_INTEGER li = { findData.nFileSizeLow , findData.nFileSizeHigh };
+		fi.compsize = fi.filesize = static_cast<size_t>(li.QuadPart);
 		fi.timestamp = FileTimeToUnixTime(findData.ftLastWriteTime);
 		fi.crc = 0;
-		strncpy_s(fi.path, w2a(pair.first.c_str()).c_str(), _countof(fi.path) - 1);
-		strcat_s(fi.path, "\\");
-		strncpy_s(fi.filename, w2a(findData.cFileName, '_').c_str(), _countof(fi.filename) - 1);
+		wcsncpy_s(fi.path, pair.first.c_str(), _countof(fi.path) - 1);
+		wcscat_s(fi.path, L"\\");
+		wcsncpy_s(fi.filename, findData.cFileName, _countof(fi.filename) - 1);
 		ret.push_back(fi);
 	}
 
-	HLOCAL hLocal = ::LocalAlloc(LPTR, sizeof(fileInfo) * (ret.size() + 1));
+	HLOCAL hLocal = ::LocalAlloc(LPTR, sizeof(fileInfoW) * (ret.size() + 1));
 	if (hLocal == nullptr)
 		return SPI_MEMORY_ERROR;
 
-	memcpy(hLocal, ret.data(), sizeof(fileInfo) * ret.size());
+	memcpy(hLocal, ret.data(), sizeof(fileInfoW) * ret.size());
 
 	*lphInf = hLocal;
 
@@ -328,20 +307,25 @@ int GetArchiveInfoEx(LPCSTR filename, size_t len, HLOCAL *lphInf)
 	UNREFERENCED_PARAMETER(len);
 }
 
-int GetFileEx(LPCSTR filename, IStream *dest, const fileInfo *pinfo,
-	SPI_PROGRESS lpPrgressCallback, LONG_PTR lData)
+int GetFileEx(LPCWSTR filename, IStream *dest, const fileInfoW *pinfo, SPI_PROGRESS lpPrgressCallback, LONG_PTR lData)
 {
 	Configuration config;
-	config.Load(a2w(filename).c_str());
+	config.LoadDefault();
+	config.Load(filename);
 
 	std::vector<WIN32_FIND_DATA> files;
-	if (!enumFiles(config, a2w(filename).c_str(), files))
+	if (!enumFiles(config, filename, files))
 		return SPI_FILE_READ_ERROR;
 
-	auto& findData = files[pinfo->position];
+	auto found = std::find_if(files.begin(), files.end(),
+		[&pinfo](const WIN32_FIND_DATA& elem) { return _wcsicmp(pinfo->filename, elem.cFileName) == 0; });
+	if (found == files.end())
+		return SPI_FILE_READ_ERROR;
+
+	auto& findData = *found;
 
 	WCHAR longpath[MAX_PATH];
-	::GetLongPathName(a2w(filename).c_str(), longpath, _countof(longpath));
+	::GetLongPathName(filename, longpath, _countof(longpath));
 	WCHAR fullpath[MAX_PATH];
 	::GetFullPathName(longpath, _countof(fullpath), fullpath, nullptr);
 	::PathRemoveFileSpec(fullpath);
@@ -367,21 +351,22 @@ int GetFileEx(LPCSTR filename, IStream *dest, const fileInfo *pinfo,
 }
 
 
-static BOOL CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	static Configuration* config = nullptr;
 
 	const static std::pair<INT, bool Configuration::*> boolMembers[] =
 	{
-		std::make_pair(IDC_CHECK_PARNTHESIS, &Configuration::enableParnthesis),
-		std::make_pair(IDC_CHECK_FULLWIDTH_PARNTHESIS, &Configuration::enableFullwidthParnthesis),
-		std::make_pair(IDC_CHECK_SUARE_BRACKET, &Configuration::enableSquareBracket),
-		std::make_pair(IDC_CHECK_FULLWIDTH_SUARE_BRACKET, &Configuration::enableFullwidthSquareBracket),
-		std::make_pair(IDC_CHECK_BLACK_LENTICULAR_BRACKET, &Configuration::enableBlackLenticularBracket),
-		std::make_pair(IDC_CHECK_WHITE_LENTICULAR_BRACKET, &Configuration::enableWhiteLenticularBracket),
-		std::make_pair(IDC_CHECK_CORNER_BRACKET, &Configuration::enableCornerBracket),
-		std::make_pair(IDC_CHECK_WHITE_CORNER_BRACKET, &Configuration::enableWhiteCornerBracket),
-		std::make_pair(IDC_CHECK_DOUBLE_ANGLE_BRACKET, &Configuration::enableDoubleAngleBracket),
+		std::make_pair(IDC_CHECK_SPACE, &Configuration::EnableSpace),
+		std::make_pair(IDC_CHECK_PARNTHESIS, &Configuration::EnableParnthesis),
+		std::make_pair(IDC_CHECK_FULLWIDTH_PARNTHESIS, &Configuration::EnableFullwidthParnthesis),
+		std::make_pair(IDC_CHECK_SUARE_BRACKET, &Configuration::EnableSquareBracket),
+		std::make_pair(IDC_CHECK_FULLWIDTH_SUARE_BRACKET, &Configuration::EnableFullwidthSquareBracket),
+		std::make_pair(IDC_CHECK_BLACK_LENTICULAR_BRACKET, &Configuration::EnableBlackLenticularBracket),
+		std::make_pair(IDC_CHECK_WHITE_LENTICULAR_BRACKET, &Configuration::EnableWhiteLenticularBracket),
+		std::make_pair(IDC_CHECK_CORNER_BRACKET, &Configuration::EnableCornerBracket),
+		std::make_pair(IDC_CHECK_WHITE_CORNER_BRACKET, &Configuration::EnableWhiteCornerBracket),
+		std::make_pair(IDC_CHECK_DOUBLE_ANGLE_BRACKET, &Configuration::EnableDoubleAngleBracket),
 	};
 	assert(Configuration::GetBoolMembers().size() == _countof(boolMembers));
 
@@ -441,13 +426,14 @@ int WINAPI ConfigurationDlg(HWND parent, int fnc) noexcept
 	if (fnc == 1)
 	{
 		Configuration config;
-		config.Load(Configuration::GetGlobalIniFilePath().c_str());
+		config.LoadDefault();
 
-		int ret = ::DialogBoxParam(g_hModule, MAKEINTRESOURCE(IDD_DIALOG1), parent, &DialogProc, reinterpret_cast<LPARAM>(&config));
+		INT_PTR ret = ::DialogBoxParam(g_hModule, MAKEINTRESOURCE(IDD_DIALOG1), parent, &DialogProc, reinterpret_cast<LPARAM>(&config));
 		switch (ret)
 		{
 		case IDOK:
 			config.Save();
+
 			break;
 		default:
 			break;

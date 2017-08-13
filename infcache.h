@@ -1,4 +1,4 @@
-/**
+ï»¿/**
  * Cache system for Susie Plug-in by shimitei (modified by gocha)
  * <http://www.asahi-net.or.jp/~kh4s-smz/spi/make_spi.html>
  */
@@ -13,7 +13,7 @@
 typedef struct ArcInfo
 {
   HLOCAL hinfo;         // fileInfo[]
-  char path[MAX_PATH];  // ƒtƒ@ƒCƒ‹ƒpƒX
+  WCHAR path[MAX_PATH];  // ãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹
 } ArcInfo;
 
 #define INFOCACHE_MAX 0x10
@@ -22,15 +22,15 @@ class InfoCache
 public:
   InfoCache();
   ~InfoCache();
-  void Clear(void); //ƒLƒƒƒbƒVƒ…ƒNƒŠƒA
-  void Add(const char *filepath, HLOCAL *ph); //ƒLƒƒƒbƒVƒ…‚É’Ç‰ÁBINFOCACHE_MAX ‚ğ’´‚¦‚é‚ÆŒÃ‚¢‚Ì‚ÍÁ‚·B
-  //ƒLƒƒƒbƒVƒ…‚É‚ ‚ê‚ÎƒA[ƒJƒCƒuî•ñ‚ğƒRƒs[B
-  int Dupli(const char *filepath, HLOCAL *ph, fileInfo *pinfo);
+  void Clear(void); //ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚¯ãƒªã‚¢
+  void Add(const wchar_t *filepath, HLOCAL *ph); //ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«è¿½åŠ ã€‚INFOCACHE_MAX ã‚’è¶…ãˆã‚‹ã¨å¤ã„ã®ã¯æ¶ˆã™ã€‚
+  //ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ã‚ã‚Œã°ã‚¢ãƒ¼ã‚«ã‚¤ãƒ–æƒ…å ±ã‚’ã‚³ãƒ”ãƒ¼ã€‚
+  int Dupli(const wchar_t *filepath, HLOCAL *ph, fileInfoW *pinfo);
 private:
   CriticalSection cs;
   ArcInfo arcinfo[INFOCACHE_MAX];
   int nowno;
-  bool GetCache(const char *filepath, HLOCAL *ph);
+  bool GetCache(const wchar_t *filepath, HLOCAL *ph);
 };
 
 #endif

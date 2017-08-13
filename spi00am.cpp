@@ -1,4 +1,4 @@
-/**
+Ôªø/**
  * SUSIE32 '00AM' Plug-in Sample by shimitei (modified by gocha)
  * <http://www.asahi-net.or.jp/~kh4s-smz/spi/make_spi.html>
  */
@@ -10,34 +10,35 @@
 #include <Shlwapi.h>
 #include <comip.h>
 #include <comdef.h>
+#include <exception>
 
 #include "spi00am.h"
 #include "axvtag.h"
 #include "infcache.h"
-#include <exception>
+#include "utility.h"
 
- // ÉwÉbÉ_É`ÉFÉbÉNìôÇ…ïKóvÇ»ÉTÉCÉY.2KBà»ì‡Ç≈
+ // „Éò„ÉÉ„ÉÄ„ÉÅ„Çß„ÉÉ„ÇØÁ≠â„Å´ÂøÖË¶Å„Å™„Çµ„Ç§„Ç∫.2KB‰ª•ÂÜÖ„Åß
 #define HEADBUF_SIZE  9
 HMODULE g_hModule;
- /*-------------------------------------------------------------------------*/
- // Ç±ÇÃPluginÇÃèÓïÒ
- /*-------------------------------------------------------------------------*/
-static const char *pluginfo[] = {
-	/* Plug-in APIÉoÅ[ÉWÉáÉì */
-	"00AM",                           
-	/* Plug-inñºÅAÉoÅ[ÉWÉáÉìãyÇ— copyright */
-	"Virtual Tag Plugin",             
-	/* ë„ï\ìIÇ»ägí£éq ("*.JPG" "*.RGB;*.Q0" Ç»Ç«) */
-	"*.vtag",                         
-	/* ÉtÉ@ÉCÉãå`éÆñº */
-	"Virtual Tagging Marker File",    
+/*-------------------------------------------------------------------------*/
+// „Åì„ÅÆPlugin„ÅÆÊÉÖÂ†±
+/*-------------------------------------------------------------------------*/
+static const char * const pluginfo[] = {
+	/* Plug-in API„Éê„Éº„Ç∏„Éß„É≥ */
+	"00AM",
+	/* Plug-inÂêç„ÄÅ„Éê„Éº„Ç∏„Éß„É≥Âèä„Å≥ copyright */
+	"Virtual Tag Plugin",
+	/* ‰ª£Ë°®ÁöÑ„Å™Êã°ÂºµÂ≠ê ("*.JPG" "*.RGB;*.Q0" „Å™„Å©) */
+	"*.vtag",
+	/* „Éï„Ç°„Ç§„É´ÂΩ¢ÂºèÂêç */
+	"Virtual Tagging Marker File",
 };
 
-//ÉOÉçÅ[ÉoÉãïœêî
-InfoCache infocache; //ÉAÅ[ÉJÉCÉuèÓïÒÉLÉÉÉbÉVÉÖÉNÉâÉX
-
+//„Ç∞„É≠„Éº„Éê„É´Â§âÊï∞
+InfoCache infocache; //„Ç¢„Éº„Ç´„Ç§„ÉñÊÉÖÂ†±„Ç≠„É£„ÉÉ„Ç∑„É•„ÇØ„É©„Çπ
+static char g_fallbackChar = '_';
 //---------------------------------------------------------------------------
-/* ÉGÉìÉgÉäÉ|ÉCÉìÉg */
+/* „Ç®„É≥„Éà„É™„Éù„Ç§„É≥„Éà */
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
 	switch (ul_reason_for_call) {
@@ -51,60 +52,93 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 	}
 	return SpiEntryPoint(hModule, ul_reason_for_call, lpReserved);
 }
-
+inline bool fileInfoW2fileInfo(const fileInfoW* from, fileInfo* to)
+{
+	memcpy(to->method, from->method, sizeof(from->method));
+	to->position = from->position;
+	to->compsize = from->compsize;
+	to->filesize = from->filesize;
+	to->timestamp = from->timestamp;
+	strcpy_s(to->path, w2a(from->path, g_fallbackChar).c_str());
+	strcpy_s(to->filename, w2a(from->filename, g_fallbackChar).c_str());
+	to->crc = from->crc;
+	return true;
+}
 /***************************************************************************
- * SPIä÷êî
+ * SPIÈñ¢Êï∞
  ***************************************************************************/
  //---------------------------------------------------------------------------
-int __stdcall GetPluginInfo(int infono, LPSTR buf, int buflen) noexcept
+extern "C" int __stdcall GetPluginInfo(int infono, LPSTR buf, int buflen) noexcept
 {
 	if (infono < 0 || infono >= (sizeof(pluginfo) / sizeof(char *)))
 		return 0;
+
+	setlocale(LC_CTYPE, "");
 
 	strncpy_s(buf, buflen, pluginfo[infono], buflen);
 
 	return (int)strlen(buf);
 }
-//---------------------------------------------------------------------------
-int __stdcall IsSupported(LPSTR filename, void* dw) noexcept
+extern "C" int __stdcall GetPluginInfoW(int infono, LPWSTR buf, int buflen) noexcept
 {
-	BYTE *data;
-	BYTE buff[HEADBUF_SIZE];
+	CHAR a[256] = {};
+	GetPluginInfo(infono, a, _countof(a));
+	size_t conveted;
+	mbstowcs_s(&conveted, buf, buflen, a, _TRUNCATE);
+	return static_cast<int>(conveted);
+}
+extern "C" int __stdcall IsSupportedW(LPCWSTR filename, void *dw) noexcept
+{
+	try
+	{
+		BYTE *data;
+		BYTE buff[HEADBUF_SIZE];
 
-	if ((reinterpret_cast<ULONG_PTR>(dw) & 0xFFFF0000) == 0) {
-		/* dwÇÕÉtÉ@ÉCÉãÉnÉìÉhÉã */
-		DWORD ReadBytes;
-		if (!ReadFile((HANDLE)dw, buff, HEADBUF_SIZE, &ReadBytes, NULL)) {
-			return 0;
+		if ((reinterpret_cast<ULONG_PTR>(dw) & 0xFFFF0000) == 0) {
+			/* dw„ÅØ„Éï„Ç°„Ç§„É´„Éè„É≥„Éâ„É´ */
+			DWORD ReadBytes;
+			if (!ReadFile((HANDLE)dw, buff, HEADBUF_SIZE, &ReadBytes, NULL)) {
+				return 0;
+			}
+			data = buff;
 		}
-		data = buff;
-	}
-	else {
-		/* dwÇÕÉoÉbÉtÉ@Ç÷ÇÃÉ|ÉCÉìÉ^ */
-		data = (BYTE *)dw;
-	}
+		else {
+			/* dw„ÅØ„Éê„ÉÉ„Éï„Ç°„Å∏„ÅÆ„Éù„Ç§„É≥„Çø */
+			data = (BYTE *)dw;
+		}
 
-	/* ÉtÉHÅ[É}ÉbÉgämîF */
-	if (IsSupportedEx(filename, data)) return 1;
+		/* „Éï„Ç©„Éº„Éû„ÉÉ„ÉàÁ¢∫Ë™ç */
+		if (IsSupportedEx(filename, data)) return 1;
 
-	return 0;
+		return 0;
+	}
+	catch (const std::exception&)
+	{
+		return 0;
+	}
+}
+
+//---------------------------------------------------------------------------
+extern "C" int __stdcall IsSupported(LPSTR filename, void* dw) noexcept
+{
+	return IsSupportedW(a2w(filename).c_str(), dw);
 }
 //---------------------------------------------------------------------------
-//ÉAÅ[ÉJÉCÉuèÓïÒÇÉLÉÉÉbÉVÉÖÇ∑ÇÈ
-int GetArchiveInfoCache(const char *filename, size_t len, HLOCAL *phinfo, fileInfo *pinfo)
+//„Ç¢„Éº„Ç´„Ç§„ÉñÊÉÖÂ†±„Çí„Ç≠„É£„ÉÉ„Ç∑„É•„Åô„Çã
+int GetArchiveInfoCache(const wchar_t *filename, size_t len, HLOCAL *phinfo, fileInfoW *pinfo)
 {
 	int ret = infocache.Dupli(filename, phinfo, pinfo);
 	if (ret != SPI_NO_FUNCTION) return ret;
 
-	//ÉLÉÉÉbÉVÉÖÇ…ñ≥Ç¢
+	//„Ç≠„É£„ÉÉ„Ç∑„É•„Å´ÁÑ°„ÅÑ
 	HLOCAL hinfo;
 	HANDLE hf;
 	BYTE headbuf[HEADBUF_SIZE];
 	DWORD ReadBytes;
 
-	hf = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	hf = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	if (hf == INVALID_HANDLE_VALUE) return SPI_FILE_READ_ERROR;
-	
+
 	LARGE_INTEGER distanceToMove;
 	distanceToMove.QuadPart = len;
 	if (!SetFilePointerEx(hf, distanceToMove, NULL, FILE_BEGIN)) {
@@ -122,12 +156,12 @@ int GetArchiveInfoCache(const char *filename, size_t len, HLOCAL *phinfo, fileIn
 	ret = GetArchiveInfoEx(filename, len, &hinfo);
 	if (ret != SPI_ALL_RIGHT) return ret;
 
-	//ÉLÉÉÉbÉVÉÖ
+	//„Ç≠„É£„ÉÉ„Ç∑„É•
 	infocache.Add(filename, &hinfo);
 
 	if (phinfo != NULL) {
-		UINT size = (UINT)LocalSize(hinfo);
-		/* èoóÕópÇÃÉÅÉÇÉäÇÃäÑÇËìñÇƒ */
+		auto size = LocalSize(hinfo);
+		/* Âá∫ÂäõÁî®„ÅÆ„É°„É¢„É™„ÅÆÂâ≤„ÇäÂΩì„Å¶ */
 		*phinfo = LocalAlloc(LMEM_FIXED, size);
 		if (*phinfo == NULL) {
 			return SPI_NO_MEMORY;
@@ -136,11 +170,11 @@ int GetArchiveInfoCache(const char *filename, size_t len, HLOCAL *phinfo, fileIn
 		memcpy(*phinfo, (void*)hinfo, size);
 	}
 	else {
-		fileInfo *ptmp = (fileInfo *)hinfo;
+		fileInfoW *ptmp = (fileInfoW *)hinfo;
 		if (pinfo->filename[0] != '\0') {
 			for (;;) {
 				if (ptmp->method[0] == '\0') return SPI_NO_FUNCTION;
-				if (_stricmp(ptmp->filename, pinfo->filename) == 0) break;
+				if (_wcsicmp(ptmp->filename, pinfo->filename) == 0) break;
 				ptmp++;
 			}
 		}
@@ -156,37 +190,90 @@ int GetArchiveInfoCache(const char *filename, size_t len, HLOCAL *phinfo, fileIn
 	return SPI_ALL_RIGHT;
 }
 //---------------------------------------------------------------------------
-int __stdcall GetArchiveInfo(LPSTR buf, size_t len, unsigned int flag, HLOCAL *lphInf) noexcept
+extern "C" int __stdcall GetArchiveInfoW(LPCWSTR buf, size_t len, unsigned int flag, HLOCAL *lphInf) noexcept
 {
-	//ÉÅÉÇÉäì¸óÕÇ…ÇÕëŒâûÇµÇ»Ç¢
+	//„É°„É¢„É™ÂÖ•Âäõ„Å´„ÅØÂØæÂøú„Åó„Å™„ÅÑ
 	if ((flag & 7) != 0) return SPI_NO_FUNCTION;
 
-	*lphInf = NULL;
-	return GetArchiveInfoCache(buf, len, lphInf, NULL);
+	try
+	{
+		*lphInf = NULL;
+		return GetArchiveInfoCache(buf, len, lphInf, NULL);
+	}
+	catch (const std::exception&)
+	{
+		return SPI_OTHER_ERROR;
+	}
 }
+int __stdcall GetArchiveInfo(LPSTR buf, size_t len, unsigned int flag, HLOCAL *lphInf) noexcept
+{
+	HLOCAL tmpHlocal = nullptr;
+	auto ret = GetArchiveInfoW(
+		(flag & 7) == 0 ? a2w(buf).c_str() : reinterpret_cast<LPWSTR>(buf),
+		len, flag, &tmpHlocal);
+	if (ret != SPI_ALL_RIGHT)
+		return ret;
+
+	HLOCAL newInfo = LocalAlloc(LPTR, (LocalSize(tmpHlocal) / sizeof(struct fileInfoW)) * sizeof(fileInfo));
+	auto a = reinterpret_cast<struct fileInfoW*>(LocalLock(tmpHlocal));
+	auto b = reinterpret_cast<struct fileInfo*>(newInfo);
+
+	for (int i = 0;; i++)
+	{
+		auto from = a + i;
+		auto to = b + i;
+		if (from->method[0] == '\0')
+			break;
+		fileInfoW2fileInfo(from, to);
+	}
+	LocalFree(tmpHlocal);
+	*lphInf = newInfo;
+
+	return ret;
+}
+
 //---------------------------------------------------------------------------
-int __stdcall GetFileInfo
-(LPSTR buf, size_t len, LPSTR filename, unsigned int flag, struct fileInfo *lpInfo) noexcept
+extern "C" int __stdcall GetFileInfoW
+(LPCWSTR buf, size_t len, LPCWSTR filename, unsigned int flag, struct fileInfoW *lpInfo) noexcept
 {
 	//  bool caseSensitive = !(flag & 0x80);
 
-	  //ÉÅÉÇÉäì¸óÕÇ…ÇÕëŒâûÇµÇ»Ç¢
+	//„É°„É¢„É™ÂÖ•Âäõ„Å´„ÅØÂØæÂøú„Åó„Å™„ÅÑ
 	if ((flag & 7) != 0) return SPI_NO_FUNCTION;
 
-	strcpy_s(lpInfo->filename, filename);
-
-	return GetArchiveInfoCache(buf, len, NULL, lpInfo);
-}
-//---------------------------------------------------------------------------
-int __stdcall GetFile(LPSTR src, size_t len,
-	LPSTR dest, unsigned int flag,
-	SPI_PROGRESS lpPrgressCallback, LONG_PTR lData) noexcept
-{
-	//ÉÅÉÇÉäì¸óÕÇ…ÇÕëŒâûÇµÇ»Ç¢
-	if ((flag & 7) != 0) return SPI_NO_FUNCTION;
 	try
 	{
-		fileInfo info = {};
+		wcscpy_s(lpInfo->filename, filename);
+
+		return GetArchiveInfoCache(buf, len, NULL, lpInfo);
+	}
+	catch (const std::exception&)
+	{
+		return SPI_OTHER_ERROR;
+	}
+}
+extern "C" int __stdcall GetFileInfo
+(LPSTR buf, size_t len, LPSTR filename, unsigned int flag, struct fileInfo *lpInfo) noexcept
+{
+	fileInfoW fi;
+	auto ret = GetFileInfoW((flag & 7) == 0 ? a2w(buf).c_str() : reinterpret_cast<LPWSTR>(buf), len, a2w(filename).c_str(), flag, &fi);
+	if (ret != SPI_ALL_RIGHT)
+		return ret;
+	fileInfoW2fileInfo(&fi, lpInfo);
+
+	return SPI_ALL_RIGHT;
+}
+//---------------------------------------------------------------------------
+int __stdcall GetFileW(LPCWSTR src, size_t len,
+	LPCWSTR dest, unsigned int flag,
+	SPI_PROGRESS lpPrgressCallback, LONG_PTR lData) noexcept
+{
+	//„É°„É¢„É™ÂÖ•Âäõ„Å´„ÅØÂØæÂøú„Åó„Å™„ÅÑ
+	if ((flag & 7) != 0) return SPI_NO_FUNCTION;
+
+	try
+	{
+		fileInfoW info = {};
 		info.position = len;
 		int ret = GetArchiveInfoCache(src, 0, NULL, &info);
 		if (ret != SPI_ALL_RIGHT)
@@ -198,7 +285,7 @@ int __stdcall GetFile(LPSTR src, size_t len,
 			CHAR path[MAX_PATH];
 			wsprintfA(path, "%s\\%s", dest, info.filename);
 			HRESULT hr = SHCreateStreamOnFileA(path, STGM_CREATE | STGM_WRITE, &stream);
-			if (FAILED(hr)) 
+			if (FAILED(hr))
 				return SPI_FILE_WRITE_ERROR;
 		}
 		else
@@ -224,4 +311,19 @@ int __stdcall GetFile(LPSTR src, size_t len,
 		return SPI_OTHER_ERROR;
 	}
 }
+
+int __stdcall GetFile(LPSTR src, size_t len, LPSTR dest, unsigned int flag, SPI_PROGRESS prgressCallback, LONG_PTR lData) noexcept
+{
+	auto ret = GetFileW(
+		(flag & 7) == 0 ? a2w(src).c_str() : reinterpret_cast<LPWSTR>(src),
+		len,
+		(flag & 0x700) == 0 ? a2w(dest).c_str() : reinterpret_cast<LPWSTR>(dest),
+		flag,
+		prgressCallback,
+		lData);
+
+	return ret;
+}
+
+
 //---------------------------------------------------------------------------

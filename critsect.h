@@ -1,10 +1,10 @@
-//ƒNƒŠƒeƒBƒJƒ‹ƒZƒNƒVƒ‡ƒ“ƒNƒ‰ƒX
+ï»¿//ã‚¯ãƒªãƒ†ã‚£ã‚«ãƒ«ã‚»ã‚¯ã‚·ãƒ§ãƒ³ã‚¯ãƒ©ã‚¹
 //
-//ƒRƒ“ƒXƒgƒ‰ƒNƒ^AƒfƒXƒgƒ‰ƒNƒ^‚Å
-//ƒNƒŠƒeƒBƒJƒ‹ƒZƒNƒVƒ‡ƒ“‚Ì‰Šú‰»A”jŠü‚ðs‚¤B
+//ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ã€ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ã§
+//ã‚¯ãƒªãƒ†ã‚£ã‚«ãƒ«ã‚»ã‚¯ã‚·ãƒ§ãƒ³ã®åˆæœŸåŒ–ã€ç ´æ£„ã‚’è¡Œã†ã€‚
 //
-//ƒNƒŠƒeƒBƒJƒ‹ƒZƒNƒVƒ‡ƒ“‚É“ü‚é‚Æ‚«‚ÍEnter()‚ðŒÄ‚ÑA
-//o‚é‚Æ‚«‚ÍLeave()‚ðŒÄ‚Ô‚±‚ÆB
+//ã‚¯ãƒªãƒ†ã‚£ã‚«ãƒ«ã‚»ã‚¯ã‚·ãƒ§ãƒ³ã«å…¥ã‚‹ã¨ãã¯Enter()ã‚’å‘¼ã³ã€
+//å‡ºã‚‹ã¨ãã¯Leave()ã‚’å‘¼ã¶ã“ã¨ã€‚
 
 #ifndef critsect_h
 #define critsect_h
