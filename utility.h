@@ -2,7 +2,7 @@
 #include <string>
 #include <windows.h>
 
-inline std::string w2a(LPCWSTR str, CHAR DefaultChar = '?')
+inline std::string w2a(LPCWSTR str, CHAR const DefaultChar = '?')
 {
 	DWORD const dwFlags = WC_COMPOSITECHECK | WC_NO_BEST_FIT_CHARS;
 	int capacity = ::WideCharToMultiByte(CP_THREAD_ACP, dwFlags, str, -1, nullptr, 0, &DefaultChar, nullptr);

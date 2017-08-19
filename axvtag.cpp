@@ -12,7 +12,6 @@
 #include <map>
 #include <algorithm>
 #include <string>
-#include <cassert>
 
 #include "spi00am.h"
 #include "axvtag.h"
@@ -28,6 +27,7 @@ struct Configuration
 {
 	std::wstring ExcludePattern = L"";
 	UINT LowerBound = 2;
+	bool AddCountToPath = false;
 
 	bool EnableSpace = false;
 	bool EnableParnthesis = true;
@@ -40,18 +40,8 @@ struct Configuration
 	bool EnableWhiteCornerBracket = true;
 	bool EnableDoubleAngleBracket = true;
 
-	inline void Save() const
-	{
-		auto const iniFile = GetGlobalIniFilePath();
-
-		::WritePrivateProfileString(keyName, L"ExcludePattern", ExcludePattern.c_str(), iniFile.c_str());
-		for (auto a : GetBoolMembers())
-		{
-			::WritePrivateProfileString(keyName, a.first, this->*a.second ? L"1" : L"0", iniFile.c_str());
-		}
-
-		::WritePrivateProfileString(keyName, L"LowerBound", std::to_wstring(LowerBound).c_str(), iniFile.c_str());
-	}
+	inline void Save() const;
+	inline void Load(LPCWSTR iniFile);
 
 	static std::wstring GetGlobalIniFilePath()
 	{
@@ -64,26 +54,6 @@ struct Configuration
 	inline void LoadDefault()
 	{
 		Load(GetGlobalIniFilePath().c_str());
-	}
-	inline void Load(LPCWSTR iniFile)
-	{
-		{
-			WCHAR ret[128];
-			::GetPrivateProfileString(keyName, L"ExcludePattern", ExcludePattern.c_str(), ret, _countof(ret), iniFile);
-			ExcludePattern = ret;
-		}
-
-		for (auto a : GetBoolMembers())
-		{
-			int ret = ::GetPrivateProfileInt(keyName, a.first, this->*a.second ? 1 : 0, iniFile);
-			this->*a.second = ret;
-		}
-
-		{
-			int ret = static_cast<int>(::GetPrivateProfileInt(keyName, L"LowerBound", LowerBound, iniFile));
-			if (ret >= 0)
-				LowerBound = ret;
-		}
 	}
 
 	std::map<const wchar_t *, const wchar_t *> GetSupportedTags() const
@@ -113,28 +83,57 @@ struct Configuration
 
 		return std::move(map);
 	}
-
-	inline static std::map<LPCWSTR, bool(Configuration::*)> GetBoolMembers()
-	{
-		const static std::pair<LPCWSTR, bool Configuration::*> boolMembers[] =
-		{
-			std::make_pair(L"EnableSpace", &Configuration::EnableSpace),
-			std::make_pair(L"EnableParnthesis", &Configuration::EnableParnthesis),
-			std::make_pair(L"EnableFullwidthParnthesis", &Configuration::EnableFullwidthParnthesis),
-			std::make_pair(L"EnableSquareBracket", &Configuration::EnableSquareBracket),
-			std::make_pair(L"EnableFullwidthSquareBracket", &Configuration::EnableFullwidthSquareBracket),
-			std::make_pair(L"EnableBlackLenticularBracket", &Configuration::EnableBlackLenticularBracket),
-			std::make_pair(L"EnableWhiteLenticularBracket", &Configuration::EnableWhiteLenticularBracket),
-			std::make_pair(L"EnableCornerBracket", &Configuration::EnableCornerBracket),
-			std::make_pair(L"EnableWhiteCornerBracket", &Configuration::EnableWhiteCornerBracket),
-			std::make_pair(L"EnableDoubleAngleBracket", &Configuration::EnableDoubleAngleBracket),
-		};
-
-		return std::move(std::map<LPCWSTR, bool(Configuration::*)>(boolMembers, boolMembers + _countof(boolMembers)));
-	}
-
 	static constexpr LPCWSTR const keyName = L"AXVTAG";
 };
+
+constexpr static std::pair<LPCWSTR, bool Configuration::*> boolMembers[] =
+{
+	std::make_pair(L"AddCountToPath", &Configuration::AddCountToPath),
+	std::make_pair(L"EnableSpace", &Configuration::EnableSpace),
+	std::make_pair(L"EnableParnthesis", &Configuration::EnableParnthesis),
+	std::make_pair(L"EnableFullwidthParnthesis", &Configuration::EnableFullwidthParnthesis),
+	std::make_pair(L"EnableSquareBracket", &Configuration::EnableSquareBracket),
+	std::make_pair(L"EnableFullwidthSquareBracket", &Configuration::EnableFullwidthSquareBracket),
+	std::make_pair(L"EnableBlackLenticularBracket", &Configuration::EnableBlackLenticularBracket),
+	std::make_pair(L"EnableWhiteLenticularBracket", &Configuration::EnableWhiteLenticularBracket),
+	std::make_pair(L"EnableCornerBracket", &Configuration::EnableCornerBracket),
+	std::make_pair(L"EnableWhiteCornerBracket", &Configuration::EnableWhiteCornerBracket),
+	std::make_pair(L"EnableDoubleAngleBracket", &Configuration::EnableDoubleAngleBracket),
+};
+
+inline void Configuration::Save() const
+{
+	auto const iniFile = GetGlobalIniFilePath();
+
+	::WritePrivateProfileString(keyName, L"ExcludePattern", ExcludePattern.c_str(), iniFile.c_str());
+	for (auto a : boolMembers)
+	{
+		::WritePrivateProfileString(keyName, a.first, this->*a.second ? L"1" : L"0", iniFile.c_str());
+	}
+
+	::WritePrivateProfileString(keyName, L"LowerBound", std::to_wstring(LowerBound).c_str(), iniFile.c_str());
+}
+
+inline void Configuration::Load(LPCWSTR iniFile)
+{
+	{
+		WCHAR ret[128];
+		::GetPrivateProfileString(keyName, L"ExcludePattern", ExcludePattern.c_str(), ret, _countof(ret), iniFile);
+		ExcludePattern = ret;
+	}
+	for (auto a : boolMembers)
+	{
+		int ret = ::GetPrivateProfileInt(keyName, a.first, this->*a.second ? 1 : 0, iniFile);
+		this->*a.second = ret;
+	}
+
+	{
+		int ret = static_cast<int>(::GetPrivateProfileInt(keyName, L"LowerBound", LowerBound, iniFile));
+		if (ret >= 0)
+			LowerBound = ret;
+	}
+}
+
 /**
  * エントリポイント
  */
@@ -166,7 +165,7 @@ BOOL APIENTRY SpiEntryPoint(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lp
  */
 BOOL IsSupportedEx(const wchar_t *filename, const BYTE *data)
 {
-	const static BYTE sig[] = { '[', 'A','X','V','T','A','G', ']' };
+	constexpr BYTE sig[] = { '[', 'A','X','V','T','A','G', ']' };
 
 	// 先頭バイト列のみの簡易チェックを行う
 	if (memcmp(data, sig, sizeof(sig)) == 0)
@@ -246,11 +245,9 @@ bool enumFiles(const Configuration &config, LPCWSTR filename, std::vector<WIN32_
 	return true;
 }
 
-inline susie_time_t FileTimeToUnixTime(const FILETIME& ft)
+constexpr inline susie_time_t FileTimeToUnixTime(const FILETIME& ft)
 {
-	LARGE_INTEGER li;
-	li.HighPart = ft.dwHighDateTime;
-	li.LowPart = ft.dwLowDateTime;
+	ULARGE_INTEGER li = { ft.dwLowDateTime, ft.dwHighDateTime };
 	return static_cast<susie_time_t>((li.QuadPart - 116444736000000000) / 10000000);
 }
 
@@ -289,9 +286,13 @@ int GetArchiveInfoEx(LPCWSTR filename, size_t len, HLOCAL *lphInf)
 		fi.compsize = fi.filesize = static_cast<size_t>(li.QuadPart);
 		fi.timestamp = FileTimeToUnixTime(findData.ftLastWriteTime);
 		fi.crc = 0;
-		wcsncpy_s(fi.path, pair.first.c_str(), _countof(fi.path) - 1);
+		if (config.AddCountToPath)
+		{
+			wnsprintf(fi.path, _countof(fi.path) - 1 ,L"%u_", tags.count(pair.first));
+		}
+		wcsncat_s(fi.path, pair.first.c_str(), _TRUNCATE);
 		wcscat_s(fi.path, L"\\");
-		wcsncpy_s(fi.filename, findData.cFileName, _countof(fi.filename) - 1);
+		wcsncpy_s(fi.filename, findData.cFileName, _TRUNCATE);
 		ret.push_back(fi);
 	}
 
@@ -355,8 +356,9 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 {
 	static Configuration* config = nullptr;
 
-	const static std::pair<INT, bool Configuration::*> boolMembers[] =
+	constexpr std::pair<INT, bool Configuration::*> boolDlgItems[] =
 	{
+		std::make_pair(IDC_CHECK_ADD_COUNT_TO_PATH, &Configuration::AddCountToPath),
 		std::make_pair(IDC_CHECK_SPACE, &Configuration::EnableSpace),
 		std::make_pair(IDC_CHECK_PARNTHESIS, &Configuration::EnableParnthesis),
 		std::make_pair(IDC_CHECK_FULLWIDTH_PARNTHESIS, &Configuration::EnableFullwidthParnthesis),
@@ -368,7 +370,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 		std::make_pair(IDC_CHECK_WHITE_CORNER_BRACKET, &Configuration::EnableWhiteCornerBracket),
 		std::make_pair(IDC_CHECK_DOUBLE_ANGLE_BRACKET, &Configuration::EnableDoubleAngleBracket),
 	};
-	assert(Configuration::GetBoolMembers().size() == _countof(boolMembers));
+	static_assert(_countof(boolMembers) == _countof(boolDlgItems));
 
 	switch (msg)
 	{
@@ -383,7 +385,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 		{
 		case IDOK:
 		{
-			for (auto a : boolMembers)
+			for (auto a : boolDlgItems)
 			{
 				config->*a.second = Button_GetCheck(GetDlgItem(hWnd, a.first));
 			}
@@ -406,7 +408,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 	{
 		config = reinterpret_cast<Configuration*>(lParam);
 
-		for (auto a : boolMembers)
+		for (auto a : boolDlgItems)
 		{
 			Button_SetCheck(GetDlgItem(hWnd, a.first), config->*a.second);
 		}
@@ -444,5 +446,4 @@ int WINAPI ConfigurationDlg(HWND parent, int fnc) noexcept
 	{
 		return SPI_NO_FUNCTION;
 	}
-
 }

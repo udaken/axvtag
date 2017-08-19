@@ -5,11 +5,11 @@
 #include "stdafx.h"
 
 #include <windows.h>
-#include <string.h>
 #include <ShlObj.h>
 #include <Shlwapi.h>
 #include <comip.h>
 #include <comdef.h>
+
 #include <exception>
 
 #include "spi00am.h"
@@ -27,7 +27,7 @@ static const char * const pluginfo[] = {
 	/* Plug-in APIバージョン */
 	"00AM",
 	/* Plug-in名、バージョン及び copyright */
-	"Virtual Tag Plugin",
+	"Virtual Tag Plugin(build at " __TIMESTAMP__ ", with MSC " _STRINGIZE(_MSC_FULL_VER) ")",
 	/* 代表的な拡張子 ("*.JPG" "*.RGB;*.Q0" など) */
 	"*.vtag",
 	/* ファイル形式名 */
@@ -60,7 +60,20 @@ inline bool fileInfoW2fileInfo(const fileInfoW* from, fileInfo* to)
 	to->filesize = from->filesize;
 	to->timestamp = from->timestamp;
 	strcpy_s(to->path, w2a(from->path, g_fallbackChar).c_str());
-	strcpy_s(to->filename, w2a(from->filename, g_fallbackChar).c_str());
+
+	LPCWSTR ext = ::PathFindExtension(from->filename);
+	size_t extLength = ext ? lstrlen(ext) : 0;
+	WideCharToMultiByte(CP_ACP,
+		WC_COMPOSITECHECK | WC_NO_BEST_FIT_CHARS,
+		from->filename,
+		lstrlen(from->filename) - extLength,
+		to->filename,
+		_countof(to->filename) - (extLength + 1), 
+		&g_fallbackChar, 
+		nullptr);
+
+	if (ext)
+		strcat_s(to->filename, ::PathFindExtensionA(w2a(from->filename, g_fallbackChar).c_str()));
 	to->crc = from->crc;
 	return true;
 }
@@ -72,9 +85,6 @@ extern "C" int __stdcall GetPluginInfo(int infono, LPSTR buf, int buflen) noexce
 {
 	if (infono < 0 || infono >= (sizeof(pluginfo) / sizeof(char *)))
 		return 0;
-
-	setlocale(LC_CTYPE, "");
-
 	strncpy_s(buf, buflen, pluginfo[infono], buflen);
 
 	return (int)strlen(buf);
@@ -83,18 +93,18 @@ extern "C" int __stdcall GetPluginInfoW(int infono, LPWSTR buf, int buflen) noex
 {
 	CHAR a[256] = {};
 	GetPluginInfo(infono, a, _countof(a));
-	size_t conveted;
-	mbstowcs_s(&conveted, buf, buflen, a, _TRUNCATE);
-	return static_cast<int>(conveted);
+	wcscpy_s(buf, buflen, a2w(a).c_str());
+	return lstrlen(buf);
 }
 extern "C" int __stdcall IsSupportedW(LPCWSTR filename, void *dw) noexcept
 {
+	setlocale(LC_CTYPE, "");
 	try
 	{
 		BYTE *data;
 		BYTE buff[HEADBUF_SIZE];
 
-		if ((reinterpret_cast<ULONG_PTR>(dw) & 0xFFFF0000) == 0) {
+		if ((reinterpret_cast<ULONG_PTR>(dw) & ~static_cast<ULONG_PTR>(0xFFFF)) == 0) {
 			/* dwはファイルハンドル */
 			DWORD ReadBytes;
 			if (!ReadFile((HANDLE)dw, buff, HEADBUF_SIZE, &ReadBytes, NULL)) {
@@ -290,7 +300,7 @@ int __stdcall GetFileW(LPCWSTR src, size_t len,
 		}
 		else
 		{
-			HRESULT hr = CreateStreamOnHGlobal(nullptr, FALSE, &stream);
+			HRESULT hr = CreateStreamOnHGlobal(::GlobalAlloc(GPTR, info.filesize), FALSE, &stream);
 			if (FAILED(hr))
 				return SPI_FILE_WRITE_ERROR;
 		}
