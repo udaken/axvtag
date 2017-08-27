@@ -28,6 +28,8 @@ struct Configuration
 	std::wstring ExcludePattern = L"";
 	UINT LowerBound = 2;
 	bool AddCountToPath = false;
+	bool ShowUntaggedFiles = false;
+	bool IncludeTagChars = true;
 
 	bool EnableSpace = false;
 	bool EnableParnthesis = true;
@@ -89,6 +91,9 @@ struct Configuration
 constexpr static std::pair<LPCWSTR, bool Configuration::*> boolMembers[] =
 {
 	std::make_pair(L"AddCountToPath", &Configuration::AddCountToPath),
+	std::make_pair(L"ShowUntaggedFiles", &Configuration::ShowUntaggedFiles),
+	std::make_pair(L"IncludeTagChars", &Configuration::IncludeTagChars),
+
 	std::make_pair(L"EnableSpace", &Configuration::EnableSpace),
 	std::make_pair(L"EnableParnthesis", &Configuration::EnableParnthesis),
 	std::make_pair(L"EnableFullwidthParnthesis", &Configuration::EnableFullwidthParnthesis),
@@ -182,28 +187,39 @@ BOOL IsSupportedEx(const wchar_t *filename, const BYTE *data)
 LPCWSTR findTag(const Configuration &config, size_t index, LPCWSTR filename, std::multimap<const std::wstring, size_t>& tags)
 {
 	auto const end = filename + lstrlenW(filename) + 1;
-	auto firstPos = end;
-	decltype(firstPos) endPos = nullptr;
+	auto mostLeftPos = end;
+	decltype(mostLeftPos) tagEnd = nullptr;
+	decltype(mostLeftPos) tagStart = nullptr;
+
 	for (auto tagSep : config.GetSupportedTags())
 	{
-		auto openPos = wcsstr(filename, tagSep.first);
-		if (openPos)
+		auto leftPos = wcsstr(filename, tagSep.first);
+		if (leftPos)
 		{
-			auto closePos = wcsstr(openPos + lstrlenW(tagSep.first), tagSep.second);
-			if (closePos && openPos < firstPos) // 先頭のタグを見つける
+			auto rightPos = wcsstr(leftPos + lstrlenW(tagSep.first), tagSep.second);
+			if (rightPos && leftPos < mostLeftPos) // 先頭のタグを見つける
 			{
-				firstPos = openPos;
-				endPos = closePos + wcslen(tagSep.second);
+				mostLeftPos = leftPos;
+				if (config.IncludeTagChars)
+				{
+					tagStart = leftPos;
+					tagEnd = rightPos + wcslen(tagSep.second);
+				}
+				else
+				{
+					tagStart = leftPos + lstrlenW(tagSep.first);
+					tagEnd = rightPos;
+				}
 			}
 		}
 	}
 
-	if (firstPos == end)
+	if (mostLeftPos == end)
 		return nullptr;
 
-	std::wstring tag(firstPos, endPos);
+	std::wstring tag(tagStart, tagEnd);
 	tags.insert(std::make_pair(tag, index));
-	return endPos;
+	return tagEnd;
 }
 
 bool enumFiles(const Configuration &config, LPCWSTR filename, std::vector<WIN32_FIND_DATA> &files)
@@ -245,7 +261,7 @@ bool enumFiles(const Configuration &config, LPCWSTR filename, std::vector<WIN32_
 	return true;
 }
 
-constexpr inline susie_time_t FileTimeToUnixTime(const FILETIME& ft)
+constexpr inline susie_time_t fileTimeToUnixTime(const FILETIME& ft)
 {
 	ULARGE_INTEGER li = { ft.dwLowDateTime, ft.dwHighDateTime };
 	return static_cast<susie_time_t>((li.QuadPart - 116444736000000000) / 10000000);
@@ -264,11 +280,17 @@ int GetArchiveInfoEx(LPCWSTR filename, size_t len, HLOCAL *lphInf)
 	std::multimap<const std::wstring, size_t> tags;
 	for (size_t i = 0; i < files.size(); i++)
 	{
+		auto tagFound = false;
 		LPCWSTR startPos = files.at(i).cFileName;
 		do
 		{
 			startPos = findTag(config, i, startPos, tags);
+			if (startPos)
+				tagFound = true;
 		} while (startPos);
+
+		if (config.ShowUntaggedFiles && !tagFound)
+			tags.insert(std::make_pair(L"untagged", i));
 	}
 
 	std::vector<fileInfoW> ret;
@@ -284,7 +306,7 @@ int GetArchiveInfoEx(LPCWSTR filename, size_t len, HLOCAL *lphInf)
 		const auto findData = files.at(pair.second);
 		ULARGE_INTEGER li = { findData.nFileSizeLow , findData.nFileSizeHigh };
 		fi.compsize = fi.filesize = static_cast<size_t>(li.QuadPart);
-		fi.timestamp = FileTimeToUnixTime(findData.ftLastWriteTime);
+		fi.timestamp = fileTimeToUnixTime(findData.ftLastWriteTime);
 		fi.crc = 0;
 		if (config.AddCountToPath)
 		{
@@ -359,10 +381,12 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 	constexpr std::pair<INT, bool Configuration::*> boolDlgItems[] =
 	{
 		std::make_pair(IDC_CHECK_ADD_COUNT_TO_PATH, &Configuration::AddCountToPath),
+		std::make_pair(IDC_CHECK_SHOW_UNTAGGED_FILES, &Configuration::ShowUntaggedFiles),
+		std::make_pair(IDC_CHECK_INCLUDE_TAG_CHARS, &Configuration::IncludeTagChars),
 		std::make_pair(IDC_CHECK_SPACE, &Configuration::EnableSpace),
 		std::make_pair(IDC_CHECK_PARNTHESIS, &Configuration::EnableParnthesis),
 		std::make_pair(IDC_CHECK_FULLWIDTH_PARNTHESIS, &Configuration::EnableFullwidthParnthesis),
-		std::make_pair(IDC_CHECK_SUARE_BRACKET, &Configuration::EnableSquareBracket),
+		std::make_pair(IDC_CHECK_SQUARE_BRACKET, &Configuration::EnableSquareBracket),
 		std::make_pair(IDC_CHECK_FULLWIDTH_SUARE_BRACKET, &Configuration::EnableFullwidthSquareBracket),
 		std::make_pair(IDC_CHECK_BLACK_LENTICULAR_BRACKET, &Configuration::EnableBlackLenticularBracket),
 		std::make_pair(IDC_CHECK_WHITE_LENTICULAR_BRACKET, &Configuration::EnableWhiteLenticularBracket),
@@ -416,8 +440,21 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
 		TrackBar_SetRange(GetDlgItem(hWnd, IDC_SLIDER1), FALSE, 1, 10);
 		TrackBar_SetPos(GetDlgItem(hWnd, IDC_SLIDER1), TRUE, config->LowerBound);
+		TCHAR str[20];
+		wsprintf(str, L"%d", config->LowerBound);
+		Edit_SetText(GetDlgItem(hWnd, IDC_EDIT1), str);
 
 		return TRUE;
+	}
+	case WM_HSCROLL:
+	{
+		if ((HWND)lParam == GetDlgItem(hWnd, IDC_SLIDER1)) 
+		{
+			auto pos =TrackBar_GetPos(GetDlgItem(hWnd, IDC_SLIDER1));
+			TCHAR str[20];
+			wsprintf(str, L"%d", pos);
+			Edit_SetText(GetDlgItem(hWnd, IDC_EDIT1), str);
+		}
 	}
 	}
 	return FALSE;
