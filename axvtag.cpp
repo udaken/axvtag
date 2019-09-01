@@ -58,9 +58,9 @@ struct Configuration
 		Load(GetGlobalIniFilePath().c_str());
 	}
 
-	std::map<const wchar_t *, const wchar_t *> GetSupportedTags() const
+	std::map<const wchar_t*, const wchar_t*> GetSupportedTags() const
 	{
-		std::map<const wchar_t *, const wchar_t *> map;
+		std::map<const wchar_t*, const wchar_t*> map;
 
 		if (EnableSpace)
 			map.insert(std::make_pair(L" ", L" "));
@@ -83,7 +83,7 @@ struct Configuration
 		if (EnableDoubleAngleBracket)
 			map.insert(std::make_pair(L"《", L"》"));
 
-		return std::move(map);
+		return map;
 	}
 	static constexpr LPCWSTR const keyName = L"AXVTAG";
 };
@@ -111,7 +111,7 @@ inline void Configuration::Save() const
 	auto const iniFile = GetGlobalIniFilePath();
 
 	::WritePrivateProfileString(keyName, L"ExcludePattern", ExcludePattern.c_str(), iniFile.c_str());
-	for (auto a : boolMembers)
+	for (auto& a : boolMembers)
 	{
 		::WritePrivateProfileString(keyName, a.first, this->*a.second ? L"1" : L"0", iniFile.c_str());
 	}
@@ -126,7 +126,7 @@ inline void Configuration::Load(LPCWSTR iniFile)
 		::GetPrivateProfileString(keyName, L"ExcludePattern", ExcludePattern.c_str(), ret, _countof(ret), iniFile);
 		ExcludePattern = ret;
 	}
-	for (auto a : boolMembers)
+	for (auto& a : boolMembers)
 	{
 		int ret = ::GetPrivateProfileInt(keyName, a.first, this->*a.second ? 1 : 0, iniFile);
 		this->*a.second = ret;
@@ -168,7 +168,7 @@ BOOL APIENTRY SpiEntryPoint(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lp
  * (判断に使用するサイズはヘッダファイルで定義)
  * ファイル名も判断材料として渡されているみたい
  */
-BOOL IsSupportedEx(const wchar_t *filename, const BYTE *data)
+BOOL IsSupportedEx(const wchar_t* filename, const BYTE* data)
 {
 	constexpr BYTE sig[] = { '[', 'A','X','V','T','A','G', ']' };
 
@@ -184,7 +184,7 @@ BOOL IsSupportedEx(const wchar_t *filename, const BYTE *data)
 	UNREFERENCED_PARAMETER(filename);
 }
 
-LPCWSTR findTag(const Configuration &config, size_t index, LPCWSTR filename, std::multimap<const std::wstring, size_t>& tags)
+LPCWSTR findTag(const Configuration& config, size_t index, LPCWSTR filename, std::multimap<const std::wstring, size_t>& tags)
 {
 	auto const end = filename + lstrlenW(filename) + 1;
 	auto mostLeftPos = end;
@@ -222,7 +222,7 @@ LPCWSTR findTag(const Configuration &config, size_t index, LPCWSTR filename, std
 	return tagEnd;
 }
 
-bool enumFiles(const Configuration &config, LPCWSTR filename, std::vector<WIN32_FIND_DATA> &files)
+bool enumFiles(const Configuration& config, LPCWSTR filename, std::vector<WIN32_FIND_DATA>& files)
 {
 	WCHAR dir[MAX_PATH];
 	wcscpy_s(dir, filename);
@@ -267,7 +267,7 @@ constexpr inline susie_time_t fileTimeToUnixTime(const FILETIME& ft)
 	return static_cast<susie_time_t>((li.QuadPart - 116444736000000000) / 10000000);
 }
 
-int GetArchiveInfoEx(LPCWSTR filename, size_t len, HLOCAL *lphInf)
+int GetArchiveInfoEx(LPCWSTR filename, size_t len, HLOCAL* lphInf)
 {
 	Configuration config;
 	config.LoadDefault();
@@ -310,7 +310,7 @@ int GetArchiveInfoEx(LPCWSTR filename, size_t len, HLOCAL *lphInf)
 		fi.crc = 0;
 		if (config.AddCountToPath)
 		{
-			wnsprintf(fi.path, _countof(fi.path) - 1 ,L"%u_", tags.count(pair.first));
+			wnsprintf(fi.path, _countof(fi.path) - 1, L"%u_", tags.count(pair.first));
 		}
 		wcsncat_s(fi.path, pair.first.c_str(), _TRUNCATE);
 		wcscat_s(fi.path, L"\\");
@@ -330,7 +330,7 @@ int GetArchiveInfoEx(LPCWSTR filename, size_t len, HLOCAL *lphInf)
 	UNREFERENCED_PARAMETER(len);
 }
 
-int GetFileEx(LPCWSTR filename, IStream *dest, const fileInfoW *pinfo, SPI_PROGRESS lpPrgressCallback, LONG_PTR lData)
+int GetFileEx(LPCWSTR filename, IStream* dest, const fileInfoW* pinfo, SPI_PROGRESS lpPrgressCallback, LONG_PTR lData)
 {
 	Configuration config;
 	config.LoadDefault();
@@ -448,9 +448,9 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 	}
 	case WM_HSCROLL:
 	{
-		if ((HWND)lParam == GetDlgItem(hWnd, IDC_SLIDER1)) 
+		if ((HWND)lParam == GetDlgItem(hWnd, IDC_SLIDER1))
 		{
-			auto pos =TrackBar_GetPos(GetDlgItem(hWnd, IDC_SLIDER1));
+			auto pos = TrackBar_GetPos(GetDlgItem(hWnd, IDC_SLIDER1));
 			TCHAR str[20];
 			wsprintf(str, L"%d", pos);
 			Edit_SetText(GetDlgItem(hWnd, IDC_EDIT1), str);
